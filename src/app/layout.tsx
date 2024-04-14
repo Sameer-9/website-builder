@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import NextTopLoader from 'nextjs-toploader';
 
 import { ThemeProvider } from '@/providers/theme-provider';
+import ModalProvider from '@/providers/modal-provider';
+import { Toaster } from '@/components/ui/toaster';
 
 const fontSans = DM_Sans({
   subsets: ['latin'],
@@ -39,7 +41,10 @@ export default function RootLayout({
             color='blue'
             showSpinner={false}
           />
-          {children}
+          <ModalProvider>
+            <Toaster />
+            {children}
+          </ModalProvider>
         </ThemeProvider>
       </body>
     </html>

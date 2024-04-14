@@ -3,8 +3,9 @@
 import { clerkClient, currentUser } from '@clerk/nextjs';
 import { db } from './db';
 import { redirect } from 'next/navigation';
-import { Agency, Plan, User } from '@prisma/client';
-import { sidebarOptions } from './sidebar-options';
+import { Agency, Plan, SubAccount, User } from '@prisma/client';
+import { sidebarOptions, subaccountSidebarOptions } from './sidebar-options';
+import { v4 } from 'uuid';
 
 export const getAuthUserDetails = async () => {
   const user = await currentUser();
@@ -18,7 +19,11 @@ export const getAuthUserDetails = async () => {
     include: {
       Agency: {
         include: {
-          SidebarOption: true,
+          SidebarOption: {
+            orderBy: {
+              id: "desc"
+            }
+          },
           SubAccount: {
             include: {
               SidebarOption: true,
@@ -61,7 +66,7 @@ export const saveActivityLogsNotification = async ({
       userData = response;
     }
   } else {
-    userData = db.user.findUnique({
+    userData = await db.user.findUnique({
       where: {
         email: authUser?.emailAddresses[0].emailAddress,
       },
@@ -91,6 +96,10 @@ export const saveActivityLogsNotification = async ({
   }
 
   if (subaccountId) {
+    console.log('====================================');
+    console.log("SUBACCOUNT ID:::", subaccountId);
+    console.log("USERDATA::::", userData);
+    console.log('====================================');
     await db.notification.create({
       data: {
         notification: `${userData.name} | ${description}`,
@@ -259,3 +268,152 @@ export const upsertAgency = async (agency: Agency, price?: Plan) => {
     console.log(error)
   }
 } 
+
+export const upsertSubAccount = async (subAccount: SubAccount) => {
+  console.log("INSIDE:::::::::");
+  
+  if (!subAccount.companyEmail) return null
+  const agencyOwner = await db.user.findFirst({
+    where: {
+      Agency: {
+        id: subAccount.agencyId,
+      },
+      role: 'AGENCY_OWNER',
+    },
+  })
+  console.log("AGENCY OWNER:::", agencyOwner);
+  
+  if (!agencyOwner) return console.log('🔴Erorr could not create subaccount')
+  const permissionId = v4()
+  const response = await db.subAccount.upsert({
+    where: { id: subAccount.id },
+    update: subAccount,
+    create: {
+      ...subAccount,
+      Permissions: {
+        create: {
+          access: true,
+          email: agencyOwner.email,
+          id: permissionId,
+        },
+        connect: {
+          subAccountId: subAccount.id,
+          id: permissionId,
+        },
+      },
+      Pipeline: {
+        create: { name: 'Lead Cycle' },
+      },
+      SidebarOption: {
+        create: subaccountSidebarOptions(subAccount.id)
+      },
+    },
+  })
+  return response
+}
+
+export const getNotificationAndUser = async (agencyId: string) => {
+  try {
+    const response = await db.notification.findMany({
+      where: {
+        agencyId
+      },
+      include: {
+        User: true
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    })
+
+    return response;
+  } catch (error) {
+    console.log("Error ", error);
+    
+  }
+}
+
+export const getUserPermissions = async (userId: string) => {
+  const response = await db.user.findUnique({
+    where: { id: userId },
+    select: { Permissions: { include: { SubAccount: true } } },
+  })
+
+  return response
+}
+
+export const updateUser = async (user: Partial<User>) => {
+  const response = await db.user.update({
+    where: { email: user.email },
+    data: { ...user },
+  })
+
+  await clerkClient.users.updateUserMetadata(response.id, {
+    privateMetadata: {
+      role: user.role || 'SUBACCOUNT_USER',
+    },
+  })
+
+  return response
+}
+
+export const changeUserPermissions = async (
+  permissionId: string | undefined,
+  userEmail: string,
+  subAccountId: string,
+  permission: boolean
+) => {
+  try {
+    const response = await db.permissions.upsert({
+      where: { id: permissionId },
+      update: { access: permission },
+      create: {
+        access: permission,
+        email: userEmail,
+        subAccountId: subAccountId,
+      },
+    })
+    return response
+  } catch (error) {
+    console.log('🔴Could not change persmission', error)
+  }
+}
+
+export const getSubaccountDetails = async (subaccountId: string) => {
+  const response = await db.subAccount.findUnique({
+    where: {
+      id: subaccountId,
+    },
+  })
+  return response
+}
+
+export const deleteSubAccount = async (subaccountId: string) => {
+  const response = await db.subAccount.delete({
+    where: {
+      id: subaccountId,
+    },
+  })
+  return response
+}
+
+export const deleteUser = async (userId: string) => {
+  await clerkClient.users.updateUserMetadata(userId, {
+    privateMetadata: {
+      role: undefined,
+    },
+  })
+  const deletedUser = await db.user.delete({ where: { id: userId } })
+
+  return deletedUser
+}
+
+export const getUser = async (id: string) => {
+  const user = await db.user.findUnique({
+    where: {
+      id,
+    },
+  })
+
+  return user
+}

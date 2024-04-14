@@ -15,7 +15,7 @@ const FileUpload = ({ apiEndpoint, onChange, value }: Props) => {
 
   if (value) {
     return (
-      <div className="flex flex-col justify-center items-center">
+      <div className="relative flex flex-col justify-center items-center">
         {type !== 'pdf' ? (
           <div className="relative w-40 h-40">
             <Image
@@ -40,11 +40,13 @@ const FileUpload = ({ apiEndpoint, onChange, value }: Props) => {
         )}
         <Button
           onClick={() => onChange('')}
-          variant="ghost"
+          variant="destructive"
           type="button"
+          className='absolute -top-6 right-[20%] rounded-full'
+          size="icon"
+          title='Remove file'
         >
           <X className="h-4 w-4" />
-          Remove Logo
         </Button>
       </div>
     )

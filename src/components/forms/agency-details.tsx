@@ -140,32 +140,30 @@ function AgencyDetails({ data }: AgencyDetailsProps) {
       newUserData = await initUser({ role: 'AGENCY_OWNER' });
       console.log('newUserDataLLLLLL', newUserData);
 
-      if (!data?.id) {
-        const response = await upsertAgency({
-          id: data?.id ? data.id : v4(),
-          customerId: data?.customerId || custId || '',
-          address: values.address,
-          agencyLogo: values.agencyLogo,
-          city: values.city,
-          companyPhone: values.companyPhone,
-          country: values.country,
-          name: values.name,
-          state: values.state,
-          whiteLabel: values.whiteLabel,
-          zipCode: values.zipCode,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          companyEmail: values.companyEmail,
-          connectAccountId: '',
-          goal: 5,
-        });
-        toast({
-          title: 'Created Agency',
-        });
-        if (data?.id) return router.refresh();
-        if (response) {
-          return router.refresh();
-        }
+      const response = await upsertAgency({
+        id: data?.id ? data.id : v4(),
+        customerId: data?.customerId || custId || '',
+        address: values.address,
+        agencyLogo: values.agencyLogo,
+        city: values.city,
+        companyPhone: values.companyPhone,
+        country: values.country,
+        name: values.name,
+        state: values.state,
+        whiteLabel: values.whiteLabel,
+        zipCode: values.zipCode,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        companyEmail: values.companyEmail,
+        connectAccountId: '',
+        goal: 5,
+      });
+      toast({
+        title: 'Created Agency',
+      });
+      if (data?.id) return router.refresh();
+      if (response) {
+        return router.refresh();
       }
     } catch (error) {
       console.log(error);
@@ -408,7 +406,7 @@ function AgencyDetails({ data }: AgencyDetailsProps) {
             </form>
           </Form>
           {data?.id && (
-            <div className="mt-4 flex flex-row items-center justify-between gap-4 rounded-lg border border-destructive p-4">
+            <div className="mt-4 flex flex-col xl:flex-row items-center justify-between gap-4 rounded-lg border border-destructive p-4">
               <div>
                 <div>Danger Zone</div>
               </div>
@@ -419,7 +417,7 @@ function AgencyDetails({ data }: AgencyDetailsProps) {
               </div>
               <AlertDialogTrigger
                 disabled={isLoading || deletingAgency}
-                className="hove:bg-red-600 mt-2 whitespace-nowrap rounded-md p-2 text-center text-red-600 hover:text-white"
+                className="hove:bg-red-600 mt-2 whitespace-nowrap rounded-md p-2 text-center text-red-600 hover:bg-red-600 hover:text-white"
               >
                 {deletingAgency ? 'Deleting...' : 'Delete Agency'}
               </AlertDialogTrigger>
